@@ -2,6 +2,24 @@
 #include <stdio.h>
 #include <string.h>
 
+/*
+ * handleCMD
+ *
+ * @brief: 	This function handles the cmd line given by the user.
+ * 		Is the user just hit ENTER, do nothing
+ * 		If the user entered any text, print "Unrecognized command".
+ *
+ * @param p: 		char* line, the cmd line from the user.
+ *
+ * @return:		Nothing.
+ */
+void handleCMD(char *line)
+{
+	if (line == NULL || (strcmp(line,"\n") == 0))
+		return;
+	puts("Unrecognized command");
+}
+
 int main()
 {
 	printEntry();
@@ -19,7 +37,7 @@ int main()
 		if (strcmp(line,"^D") == 0)
 			break;
 
-		//puts("");
+		handleCMD(line);
 		printPrompt(p_ptr);
 	}
 
