@@ -16,50 +16,86 @@
  *
  * @return:		Nothing.
  */
-void handleCMD(char *line)
+int handleCMD(CmdPtr cptr)
 {
-	if (line == NULL || (strcmp(line,"\n") == 0) || strlen(line) == 0)
-		return;
+	int ret = CMD_NONE;
 
-	CmdPtr cptr = Cmdalloc(line);
 	if (cptr == NULL || cptr->pieces_num == 0)
-		goto FREE_AND_EXIT;
+		return CMD_NONE;
 
-	printf("Unrecognized command: %s\n", cptr->pieces[0]);
+	switch (CmdWhatCmd(cptr))
+	{
+		case CMD_EXIT:
+			ret = CMD_EXIT;
+			break;
 
-	FREE_AND_EXIT:
-		if (cptr != NULL)
-			Cmdfree(cptr);
-		return;
+		case CMD_ERROR:
+			printf("error\n");
+			ret=CMD_EXIT;
+			break;
+
+		case CMD_CD:
+			CmdChangeDir(cptr);
+			break;
+
+		case CMD_EXEC:
+			CmdExec(cptr);
+			break;
+
+		case CMD_NONE:
+			break;
+
+		case CMD_UNRECOGNIZED:
+			printf(ANSI_COLOR_RED "Unrecognized command: %s\n" ANSI_COLOR_RESET, cptr->pieces[0]);
+			break;
+		default:
+			break;
+	}
+	return ret;
 }
 
 int main()
 {
 	printEntry();
-	PromptPtr p_ptr = Palloc();
-	if (p_ptr == NULL)
-		exit(EXIT_FAILURE);
+	Prompt p;
+	updatePromptCWD(&p);
+	CmdPtr cptr = NULL;
 
 	char *line = NULL;
 	size_t len = 0;
 	ssize_t nread = 0;
 
-	printPrompt(p_ptr);
+	printPrompt(&p);
+
 	while ((nread = getline(&line,&len,stdin)) != -1)
 	{
 		if (strcmp(line,"^D") == 0)
+		       goto FREE_ALL;
+
+		cptr = Cmdalloc(line);
+		if (cptr == NULL)
+		{
+			puts("Error: Couldn't allocate Commandline struct!");
+			goto FREE_ALL;
+		}
+
+		free(line);
+		line = NULL;
+
+		if (handleCMD(cptr) == CMD_EXIT)
 			break;
 
-		handleCMD(line);
-		printPrompt(p_ptr);
+		printPrompt(&p);
+
+		Cmdfree(cptr);
+		cptr = NULL;
 	}
 
-	goto FREE_ALL;
 	FREE_ALL:
 		if (line != NULL)
 			free(line);
-		if (p_ptr != NULL)
-			Pfree(p_ptr);
+		if (cptr != NULL)
+			Cmdfree(cptr);
 	puts("");
 	return 0;
 }

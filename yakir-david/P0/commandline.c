@@ -6,6 +6,87 @@
 #include "commandline.h"
 
 /*
+ * getArgsSize
+ *
+ * @brief: 	This function returns the number of elements
+ * 		inside a null-term array (not including the terminator)
+ *
+ * @param line:		char** args
+ *
+ * @return:		If the args is null terminated, it returns as wanter
+ * 			O.w. anything can happen O_O
+ *
+ */
+static int getArgsSize(char **args)
+{
+        if (args == NULL)
+                return 0;
+        int counter = 0;
+        while (*args)
+        {
+                counter++;
+                args++;
+        }
+        return counter;
+}
+
+/*
+ * copysArg
+ *
+ * @brief: 	This function returns a complete copy of a nullterm arr
+ *
+ * @param line:		char** args
+ *
+ * @return:		On failure NULL, o.w. the copy
+ *
+ */
+static char** copysArg(char **args, int idx, int n)
+{
+	if (args == NULL)
+		return NULL;
+
+        int pieces_num = getArgsSize(args);
+
+        if (idx < 0 || n < 0 || idx + n > pieces_num)
+                return NULL;
+
+        int pieces_copy_num = n + 1;
+
+        char **pieces_copy = NULL;
+        MALLOC(pieces_copy,sizeof(char*) * pieces_copy_num);
+
+        for (int i = 0; i < n; i++)
+                MALLOC_STRCPY(pieces_copy[i],args[idx+i]);
+
+        pieces_copy[pieces_copy_num-1] = NULL;
+        return pieces_copy;
+}
+
+/*
+ * freArgs
+ *
+ * @brief: 	This function frees a nullterm array
+ *
+ * @param line:		char** args
+ *
+ * @return:		Nothing
+ *
+ */
+static void freeArgs(char **args)
+{
+	if (args == NULL)
+		return;
+	char **ptr = args;
+	while (*ptr)
+	{
+		free(*ptr);
+		*ptr = NULL;
+		ptr++;
+	}
+	free(args);
+}
+
+/*
  * getNumPieces
  *
  * @brief: 	This function returns the number of pieces
@@ -85,7 +166,7 @@ static char** getAllPieces(char *line)
 	if (n==0)
 		return NULL;
 	char **pieces;
-	MALLOC(pieces,sizeof(char*) * n);
+	MALLOC(pieces,sizeof(char*) * (n + 1));
 	while (i<strlen(line))
         {
                 if (isspace(line[i])==0)
@@ -100,6 +181,7 @@ static char** getAllPieces(char *line)
                 }
                 i++;
         }
+	pieces[n] = NULL;
 	return pieces;
 }
 
@@ -125,15 +207,14 @@ CmdPtr Cmdalloc(char *line)
 	// cptr
 	CmdPtr cptr;
 	MALLOC(cptr,sizeof(Cmd));
+
 	cptr->line = NULL;
 	cptr->pieces = NULL;
 	cptr->line_len = 0;
 	cptr->pieces_num = 0;
 
 	// line
-	MALLOC(cptr->line,sizeof(char)*(line_len+1));
-	strcpy(cptr->line,line);
-	(cptr->line)[line_len]='\0';
+	MALLOC_STRCPY(cptr->line,line);
 	cptr->line_len = line_len;
 
 	// pieces
@@ -155,17 +236,10 @@ void CmdfreePieces(CmdPtr cptr)
 	if (cptr == NULL || cptr->pieces == NULL)
 		return;
 
-	if (cptr->pieces != NULL && cptr->pieces_num > 0)
+	if (cptr->pieces != NULL)
 	{
-		// free each piece
-		for (int i = 0; i < cptr->pieces_num; i++)
-			if ( (cptr->pieces)[i] != NULL)
-			{
-				free((cptr->pieces)[i]);
-				(cptr->pieces)[i] = NULL;
-			}
-		// free the arr of pieces
-		free(cptr->pieces);
+		assert(cptr->pieces_num != 0 && "cptr->pieces != NULL BUT cptr->pieces_num == 0");
+		freeArgs(cptr->pieces);
 		cptr->pieces = NULL;
 		cptr->pieces_num = 0;
 	}
@@ -193,8 +267,93 @@ void Cmdfree(CmdPtr cptr)
 
 	// free pieces
 	CmdfreePieces(cptr);
+	cptr->pieces=NULL;
 
 	// final free
 	free(cptr);
 	return;
+}
+
+/*
+ * CmdWhatCmd
+ *
+ * @brief: 	This function tells what is the command entered
+ * 		Currently supporting exit/cd/exec
+ *
+ * @param cptr
+ *
+ * @return:		integer indicating what command was noticed or error.
+ */
+int CmdWhatCmd(CmdPtr cptr)
+{
+	if (cptr == NULL)
+		return CMD_ERROR;
+
+	if (cptr->pieces == NULL || cptr->pieces_num == 0)
+		return CMD_NONE;
+
+	if (strcmp(cptr->pieces[0], "exit") == 0)
+		return cptr->pieces_num == 1 ? CMD_EXIT : CMD_ERROR; 	// [exit]
+
+	if (strcmp(cptr->pieces[0], "cd") == 0)
+		return CMD_CD;
+
+	if (strcmp(cptr->pieces[0], "exec") == 0)
+		return CMD_EXEC;
+
+
+	return CMD_UNRECOGNIZED;
+}
+
+/*
+ * CmdChangeDir
+ *
+ * @brief: 	This function changes the cwd of the shell's proccess.
+ *
+ * @param CmdPtr
+ *
+ * @return:		integer indicating what command was noticed or error.
+ *
+ * @note:		On error, will print the relavent error msg w.r.t. error.
+ * 			The msgs were taken from man 2 chdir.
+ *
+ */
+void CmdChangeDir(CmdPtr cptr)
+{
+	if (cptr == NULL || cptr->pieces == NULL || cptr->pieces_num == 0)
+		return;
+	if (strcmp(cptr->pieces[0],"cd") != 0 )
+		return;
+	if (cptr->pieces_num != 2)
+	{
+		puts(ANSI_COLOR_RED "Error: one argument must be provided." ANSI_COLOR_RESET);
+		puts(ANSI_COLOR_RED "Usage: cd <directory>" ANSI_COLOR_RESET);
+		return;
+	}
+	if(chdir(cptr->pieces[1]) == -1)
+		printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+	return;
+}
+
+void* CmdExec(CmdPtr cptr)
+{
+	if (cptr == NULL || cptr->pieces == NULL || cptr->pieces_num == 0)
+		return NULL;
+	if (strcmp(cptr->pieces[0],"exec") != 0)
+		return NULL;
+	if (cptr->pieces_num <= 1)
+	{
+		puts(ANSI_COLOR_RED "Error: At least one argument must be provided." ANSI_COLOR_RESET);
+		puts(ANSI_COLOR_RED "Usage: exec [arg0] [arg1] ... [argn]" ANSI_COLOR_RESET);
+		return NULL;
+	}
+
+	char **args = copysArg(cptr->pieces,1,cptr->pieces_num-1);
+
+	if (execvp(args[0],args) == -1)
+		printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+
+	freeArgs(args);
+	args = NULL;
+	return NULL;
 }
