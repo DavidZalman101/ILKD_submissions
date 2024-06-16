@@ -301,6 +301,8 @@ int CmdWhatCmd(CmdPtr cptr)
 	if (strcmp(cptr->pieces[0], "exec") == 0)
 		return CMD_EXEC;
 
+	if (cptr->pieces[0][0] == '.' || cptr->pieces[0][1] == '/')
+		return CMD_RUN_CHILD;
 
 	return CMD_UNRECOGNIZED;
 }
@@ -335,25 +337,70 @@ void CmdChangeDir(CmdPtr cptr)
 	return;
 }
 
-void* CmdExec(CmdPtr cptr)
+/*
+ * CmdCExec
+ *
+ * @brief: 	This function runs the exec with the approp args
+ * 		If it fails, the shell will keep running, o.w. will die.
+ *
+ * @param CmdPtr
+ *
+ * @return:		Nothing.
+ *
+ */
+void CmdExec(CmdPtr cptr)
 {
 	if (cptr == NULL || cptr->pieces == NULL || cptr->pieces_num == 0)
-		return NULL;
+		return;
 	if (strcmp(cptr->pieces[0],"exec") != 0)
-		return NULL;
+		return;
 	if (cptr->pieces_num <= 1)
 	{
 		puts(ANSI_COLOR_RED "Error: At least one argument must be provided." ANSI_COLOR_RESET);
 		puts(ANSI_COLOR_RED "Usage: exec [arg0] [arg1] ... [argn]" ANSI_COLOR_RESET);
-		return NULL;
+		return;
 	}
 
 	char **args = copysArg(cptr->pieces,1,cptr->pieces_num-1);
 
-	if (execvp(args[0],args) == -1)
+	if (execv(args[0],args) == -1)
 		printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
 
 	freeArgs(args);
 	args = NULL;
-	return NULL;
+}
+void CmdRunChild(CmdPtr cptr)
+{
+
+	if (cptr == NULL || cptr->pieces == NULL || cptr->pieces_num == 0)
+		return;
+
+	//The first piece of the input looks like a path (starts with . or /)
+	if (cptr->pieces[0] == NULL || strlen(cptr->pieces[0]) == 0)
+		return;
+	if (cptr->pieces[0][0] != '.' && cptr->pieces[0][0] != '/')
+		return;
+
+	pid_t cpid;
+	int status;
+
+	cpid = fork();
+	if (cpid == -1)
+	{
+		printf(ANSI_COLOR_RED "Error: Failed to fork PANIC!\n" ANSI_COLOR_RESET);
+		return;
+	}
+
+	if (cpid == 0) /* Code executed by child */
+	{
+		if (execv(cptr->pieces[0],cptr->pieces) == -1)
+			printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+		// Dont forget to exit the child process if fails
+		exit(EXIT_FAILURE); 
+	}
+	else /* Code executed by parent */
+	{
+		// wait for the child proc to complete
+		waitpid(cpid, &status, 0);
+	}
 }

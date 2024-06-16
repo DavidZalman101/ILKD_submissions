@@ -42,6 +42,10 @@ int handleCMD(CmdPtr cptr)
 			CmdExec(cptr);
 			break;
 
+		case CMD_RUN_CHILD:
+		      CmdRunChild(cptr);
+		      break;
+
 		case CMD_NONE:
 			break;
 

@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/wait.h>
 
 typedef struct commandline {
 	char *line;
@@ -25,7 +26,8 @@ void CmdfreePieces(CmdPtr);
 CmdPtr Cmdalloc(char*);
 int CmdWhatCmd(CmdPtr);
 void CmdChangeDir(CmdPtr);
-void* CmdExec(CmdPtr);
+void CmdExec(CmdPtr);
+void CmdRunChild(CmdPtr);
 // MACROS
 #define MALLOC(ptr,size) \
         do { \
@@ -50,6 +52,7 @@ void* CmdExec(CmdPtr);
 #define CMD_CD 2
 #define CMD_EXEC 3
 #define CMD_UNRECOGNIZED 4
+#define CMD_RUN_CHILD 5
 
 // ANSI color
 #define ANSI_COLOR_RED     "\x1b[31m"
