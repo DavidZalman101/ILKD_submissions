@@ -1,3 +1,4 @@
+#include "utils.h"
 #include "prompt.h"
 #include "commandline.h"
 #include <stdio.h>
@@ -19,6 +20,7 @@
 int handleCMD(CmdPtr cptr)
 {
 	int ret = CMD_NONE;
+	char *og_cmd = strdup(cptr->pieces[0]);
 
 	if (cptr == NULL || cptr->pieces_num == 0)
 		return CMD_NONE;
@@ -50,11 +52,16 @@ int handleCMD(CmdPtr cptr)
 			break;
 
 		case CMD_UNRECOGNIZED:
-			printf(ANSI_COLOR_RED "Unrecognized command: %s\n" ANSI_COLOR_RESET, cptr->pieces[0]);
+			// Try running from PATH
+			if (CmdFindInPath(cptr) != NULL)
+				CmdRunChild(cptr);
+			else
+				printf(ANSI_COLOR_RED "Unrecognized command: %s\n" ANSI_COLOR_RESET, og_cmd);
 			break;
 		default:
 			break;
 	}
+	free(og_cmd);
 	return ret;
 }
 

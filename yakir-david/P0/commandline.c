@@ -6,186 +6,6 @@
 #include "commandline.h"
 
 /*
- * getArgsSize
- *
- * @brief: 	This function returns the number of elements
- * 		inside a null-term array (not including the terminator)
- *
- * @param line:		char** args
- *
- * @return:		If the args is null terminated, it returns as wanter
- * 			O.w. anything can happen O_O
- *
- */
-static int getArgsSize(char **args)
-{
-        if (args == NULL)
-                return 0;
-        int counter = 0;
-        while (*args)
-        {
-                counter++;
-                args++;
-        }
-        return counter;
-}
-
-/*
- * copysArg
- *
- * @brief: 	This function returns a complete copy of a nullterm arr
- *
- * @param line:		char** args
- *
- * @return:		On failure NULL, o.w. the copy
- *
- */
-static char** copysArg(char **args, int idx, int n)
-{
-	if (args == NULL)
-		return NULL;
-
-        int pieces_num = getArgsSize(args);
-
-        if (idx < 0 || n < 0 || idx + n > pieces_num)
-                return NULL;
-
-        int pieces_copy_num = n + 1;
-
-        char **pieces_copy = NULL;
-        MALLOC(pieces_copy,sizeof(char*) * pieces_copy_num);
-
-        for (int i = 0; i < n; i++)
-                MALLOC_STRCPY(pieces_copy[i],args[idx+i]);
-
-        pieces_copy[pieces_copy_num-1] = NULL;
-        return pieces_copy;
-}
-
-/*
- * freArgs
- *
- * @brief: 	This function frees a nullterm array
- *
- * @param line:		char** args
- *
- * @return:		Nothing
- *
- */
-static void freeArgs(char **args)
-{
-	if (args == NULL)
-		return;
-	char **ptr = args;
-	while (*ptr)
-	{
-		free(*ptr);
-		*ptr = NULL;
-		ptr++;
-	}
-	free(args);
-}
-
-/*
- * getNumPieces
- *
- * @brief: 	This function returns the number of pieces
- * 		that exists in a given string
- *
- * @param line:		char*, the line given to the cmd
- *
- * @return:		On failure 0, o.w. the number of pieces.
- *
- */
-static int getNumPieces(char *str)
-{
-	if (str == NULL)
-		return 0;
-	int count=0;
-	while (*str)
-	{
-		if (isspace(*str)==0)
-		{
-			count++;
-			while (*str && isspace(*str) == 0)
-				str++;
-		}
-		else
-		{
-			while(*str && isspace(*str) !=0)
-				str++;
-		}
-	}
-	return count;
-}
-
-/*
- * getNumPieces
- *
- * @brief: 	This function returns a the NEXT piece in a given
- * 		string
- *
- * @param line:		char*, the line given to the cmd
- *
- * @return:		On failure NULL, o.w. the next piece.
- *
- */
-static char* getPiece(char *str)
-{
-        if (str == NULL || strlen(str) == 1)
-                return NULL;
-
-        int i=0;
-        while (isspace(str[i]) == 0)
-                i++;
-	char* piece = NULL;
-	MALLOC(piece,sizeof(char) * (i+1));
-        strncpy(piece,str,i);
-        piece[i]='\0';
-        return piece;
-}
-
-/*
- * getAllPieces
- *
- * @brief: 	This function retrun an array of string
- * 		which are all pieces from the given line.
- *
- * @param line:		char*, the line given to the cmd
- *
- * @return:		On failure OR if there are no pieces: NULL.
- * 			o.w. the wanted array.
- *
- */
-static char** getAllPieces(char *line)
-{
-	if (line == NULL)
-		return NULL;
-	int n = getNumPieces(line), j = 0;
-	size_t i = 0;
-	if (n==0)
-		return NULL;
-	char **pieces;
-	MALLOC(pieces,sizeof(char*) * (n + 1));
-	while (i<strlen(line))
-        {
-                if (isspace(line[i])==0)
-                {
-                        char *piece = getPiece(line+i);
-                        if (piece != NULL)
-                        {
-				pieces[j]=piece;
-                                i += strlen(piece)-1;
-				j++;
-                        }
-                }
-                i++;
-        }
-	pieces[n] = NULL;
-	return pieces;
-}
-
-/*
  * Cmdalloc
  *
  * @brief: 	This function allocated a Cmd
@@ -214,14 +34,28 @@ CmdPtr Cmdalloc(char *line)
 	cptr->pieces_num = 0;
 
 	// line
-	MALLOC_STRCPY(cptr->line,line);
+	cptr->line = strdup(line);
+	if (cptr->line == NULL)
+		goto ERROR_FREE_AND_EXIT_1;
+
 	cptr->line_len = line_len;
 
 	// pieces
 	cptr->pieces_num = getNumPieces(line);
 	cptr->pieces = getAllPieces(line);
+	if (cptr->pieces == NULL)
+		goto ERROR_FREE_AND_EXIT_2;
 
 	return cptr;
+
+	ERROR_FREE_AND_EXIT_1:
+		free(cptr);
+		return NULL;
+
+	ERROR_FREE_AND_EXIT_2:
+		free(cptr->line);
+		free(cptr);
+		return NULL;
 }
 
 /*
@@ -337,6 +171,22 @@ void CmdChangeDir(CmdPtr cptr)
 	return;
 }
 
+// TODO: complete descrp
+void *CmdFindInPath(CmdPtr cptr)
+{
+	if (cptr == NULL)
+		return NULL;
+
+
+	char *file_in_PATH = FindInPath(cptr->pieces[0]);
+	if (file_in_PATH == NULL)
+		return NULL;
+	free(cptr->pieces[0]);
+	cptr->pieces[0] = file_in_PATH;
+
+	return cptr;
+}
+
 /*
  * CmdCExec
  *
@@ -362,13 +212,26 @@ void CmdExec(CmdPtr cptr)
 	}
 
 	char **args = copysArg(cptr->pieces,1,cptr->pieces_num-1);
+	CmdfreePieces(cptr);
+	cptr->pieces = args;
+	cptr->pieces_num--;
 
-	if (execv(args[0],args) == -1)
+	//execv(args[0],args);
+	execv(cptr->pieces[0],cptr->pieces);
+
+	// Will return only if an error occured
+	if (CmdFindInPath(cptr) == NULL)
 		printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+	else
+	{
+		execv(cptr->pieces[0],cptr->pieces);
+		printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+	}
 
-	freeArgs(args);
-	args = NULL;
+	//freeArgs(args);
+	//args = NULL;
 }
+
 void CmdRunChild(CmdPtr cptr)
 {
 
@@ -393,8 +256,12 @@ void CmdRunChild(CmdPtr cptr)
 
 	if (cpid == 0) /* Code executed by child */
 	{
-		if (execv(cptr->pieces[0],cptr->pieces) == -1)
+		execv(cptr->pieces[0],cptr->pieces);
+		if (CmdFindInPath(cptr) == NULL)
 			printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+		else
+			execv(cptr->pieces[0],cptr->pieces);
+
 		// Dont forget to exit the child process if fails
 		exit(EXIT_FAILURE); 
 	}

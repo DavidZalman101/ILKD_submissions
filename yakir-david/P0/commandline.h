@@ -2,14 +2,8 @@
 //************CommandLine Object***************
 //*********************************************
 
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <assert.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/wait.h>
+// Includes
+#include "utils.h"
 
 typedef struct commandline {
 	char *line;
@@ -28,23 +22,7 @@ int CmdWhatCmd(CmdPtr);
 void CmdChangeDir(CmdPtr);
 void CmdExec(CmdPtr);
 void CmdRunChild(CmdPtr);
-// MACROS
-#define MALLOC(ptr,size) \
-        do { \
-                (ptr) = malloc((size)); \
-                if ((ptr) == NULL) \
-                        return NULL;\
-        } while(0)
-
-#define MALLOC_STRCPY(dest,source) \
-        do {\
-                (dest) = malloc(sizeof(char) * (strlen((source))+1));\
-                if (dest == NULL) {\
-                        return NULL;\
-                }\
-                strcpy((dest),(source));\
-                (dest)[strlen(source)]='\0';\
-        } while(0)
+void* CmdFindInPath(CmdPtr);
 
 #define CMD_ERROR -1
 #define CMD_NONE 0
