@@ -287,7 +287,118 @@ char** getAllPieces(char *line)
                 i++;
         }
 	pieces[n] = NULL;
+
+	// Home Directory Substitution on the pieces
+	subHomeDir_args(pieces);
+
 	return pieces;
+}
+
+/*
+ * subHomeDir_str
+ *
+ * @brief:		This function performs home directory
+ * 			substitution on a string.
+ *
+ * 			Examples:
+ * 				* ~ -> /home/usr
+ * 				* ~red5 -> /home/red5
+ * 				* ~/red5/cool/secret/path -> /home/red5/cool/secret/path
+ * 				* ~/cool/secret/path -> /home/usr/cool/secret/path
+ *
+ * @param args:		A char* str.
+ *
+ * @return:		On failure a NULL
+ * 			o.w. a new home_dir_sub str.
+ *
+ * Note: s is not freed nor changed, it is up to you to manage it!
+ *
+ */
+char* subHomeDir_str(char *s)
+{
+        if (s == NULL || s[0] != '~')
+                return strdup(s);
+
+        char* new_s = NULL, *HOME = getenv("HOME"), *usr_name = NULL;
+        int new_s_len = 0, HOME_len = strlen(HOME), s_len = strlen(s), usr_name_len = 0;
+
+        if (s_len == 1)
+	{
+                /* Empty username string ~ */
+                //new_s = strdup(HOME);
+		STRDUP(new_s,HOME);
+	}
+
+        else if (s_len > 1 && s[1] == '/')
+        {
+                /* Empty username string ~/more/tokens/here */
+                new_s_len = HOME_len + s_len - 1;
+                //new_s = malloc(sizeof(char) * (new_s_len+1));
+		MALLOC(new_s,sizeof(char) * (new_s_len+1));
+                strcpy(new_s,HOME);
+                strcpy(new_s + HOME_len, s+1);
+                new_s[new_s_len] = '\0';
+        }
+        else
+        {
+                /* Not an Empty username string*/
+                char *end_name = strchrnul(s, '/');
+                usr_name_len = (end_name - s - 1);
+                usr_name = strndup(s+1,usr_name_len);
+		if (usr_name == NULL)
+			return NULL;
+                usr_name[usr_name_len]='\0';
+
+                struct passwd *data = getpwnam(usr_name);
+                if (data == NULL)
+                {
+                        free(usr_name);
+                        return strdup(s);
+                }
+                new_s_len = s_len - usr_name_len - 1 + strlen(data->pw_dir);
+                new_s = malloc(sizeof(char) * new_s_len + 1);
+		if (new_s == NULL)
+		{
+			free(usr_name);
+			return NULL;
+		}
+                strcpy(new_s,data->pw_dir);
+                strcpy(new_s + strlen(data->pw_dir),s+usr_name_len+1);
+                new_s[new_s_len]='\0';
+                free(usr_name);
+        }
+        return new_s;
+}
+
+/*
+ * subHomeDir_args
+ *
+ * @brief:		This function performs subHomeDir_str on 
+ * 			each str in args
+ *
+ * @param args:		A char** args
+ *
+ * @return:		nothing, changes args elements if needed.
+ *
+ */
+void subHomeDir_args(char **args)
+{
+	if (args == NULL)
+		return;
+
+	char **args_ptr = args;
+	char *s = NULL;
+
+	while (*args_ptr)
+	{
+		if ( (s = subHomeDir_str(*args_ptr)) != NULL)
+		{
+			free(*args_ptr);
+			*args_ptr=s;
+		}
+		args_ptr++;
+	}
+	return;
 }
 
 /*
@@ -335,5 +446,4 @@ void* FindInPath(char *file)
         FREE_AND_EXIT:
                 freeArgs(path_dirs);
                 return p_i_copy;
-
 }

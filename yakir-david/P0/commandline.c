@@ -43,6 +43,7 @@ CmdPtr Cmdalloc(char *line)
 	// pieces
 	cptr->pieces_num = getNumPieces(line);
 	cptr->pieces = getAllPieces(line);
+
 	if (cptr->pieces == NULL)
 		goto ERROR_FREE_AND_EXIT_2;
 

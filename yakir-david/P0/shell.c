@@ -80,6 +80,9 @@ int main()
 
 	while ((nread = getline(&line,&len,stdin)) != -1)
 	{
+		if (strcmp(line,"\n") == 0)
+			goto CONTINUE;
+
 		if (strcmp(line,"^D") == 0)
 		       goto FREE_ALL;
 
@@ -96,10 +99,11 @@ int main()
 		if (handleCMD(cptr) == CMD_EXIT)
 			break;
 
-		printPrompt(&p);
 
 		Cmdfree(cptr);
 		cptr = NULL;
+		CONTINUE:
+			printPrompt(&p);
 	}
 
 	FREE_ALL:

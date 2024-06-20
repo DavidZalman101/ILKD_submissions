@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <pwd.h>
 
 // MACROS
 #define MALLOC(ptr,size)\
@@ -40,5 +41,7 @@ int getNumPieces(char*);
 char* getPiece(char*);
 char** getAllPieces(char*);
 void* FindInPath(char*);
+char* subHomeDir_str(char*);
+void subHomeDir_args(char**);
 
 // END
