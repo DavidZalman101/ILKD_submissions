@@ -87,14 +87,11 @@ int main()
 		       goto FREE_ALL;
 
 		cptr = Cmdalloc(line);
-		if (cptr == NULL)
-		{
-			puts("Error: Couldn't allocate Commandline struct!");
-			goto FREE_ALL;
-		}
-
 		free(line);
 		line = NULL;
+		if (cptr == NULL)
+			goto CONTINUE;
+
 
 		if (handleCMD(cptr) == CMD_EXIT)
 			break;

@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <fcntl.h>
 
 // MACROS
 #define MALLOC(ptr,size)\
@@ -29,6 +30,9 @@
                         return NULL;\
         } while(0)
 
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
 
 // FUNCTIONS
 int getArgsSize(char**);
@@ -43,5 +47,7 @@ char** getAllPieces(char*);
 void* FindInPath(char*);
 char* subHomeDir_str(char*);
 void subHomeDir_args(char**);
+char* GetDirectionFile(char*,int*,char);
+char* CleanCmdFromDirectionFiles(char*);
 
 // END

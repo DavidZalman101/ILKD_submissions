@@ -8,8 +8,14 @@
 typedef struct commandline {
 	char *line;
 	char **pieces;
+	char *in_file;
+	char *out_file;
 	int line_len;
 	int pieces_num;
+	int in_fd;
+	int out_fd;
+	int stdin_fd;
+	int stdout_fd;
 } Cmd;
 
 typedef struct commandline *CmdPtr;

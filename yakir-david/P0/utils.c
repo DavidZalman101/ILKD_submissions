@@ -447,3 +447,121 @@ void* FindInPath(char *file)
                 freeArgs(path_dirs);
                 return p_i_copy;
 }
+/*
+ * CleanCmdFromDirectionFiles
+ *
+ * @brief: 	This function will create a copy of a given
+ * 		file, but without any of the in\out redirection
+ * 		including thier files.
+ *
+ * @param line:		char* line, the line to process.
+ *
+ * @return: 	On sucsses, a pointer to the clean line
+ * 		o.w. NULL.
+ */
+char* CleanCmdFromDirectionFiles(char* line)
+{
+	if (line == NULL)
+		return NULL;
+
+	int line_len = 0;
+	char *ptr = line;
+	while (*ptr)
+	{
+		line_len++;
+		ptr++;
+	}
+
+	char *leftmost_in = NULL, *rightmost_in = NULL;
+	char *leftmost_out = NULL, *rightmost_out = NULL;
+
+	leftmost_in = strchr(line,'<');
+	leftmost_out = strchr(line,'>');
+
+	char *left_most=NULL;
+	if (leftmost_out == NULL && leftmost_in == NULL)
+		return strdup(line);
+	else if (leftmost_out == NULL && leftmost_in != NULL)
+		left_most = leftmost_in;
+	else if (leftmost_out != NULL && leftmost_in == NULL)
+		left_most = leftmost_out;
+	else
+		left_most = leftmost_in < leftmost_out ? leftmost_in : leftmost_out;
+
+	int r_i = 0;
+	rightmost_in = GetDirectionFile(line, &r_i, '<');
+	int r_o = 0;
+	rightmost_out = GetDirectionFile(line, &r_o, '>');
+
+	char *right_most = rightmost_in+r_i > rightmost_out+r_o ? rightmost_in+r_i : rightmost_out+r_o;
+
+	int clean_line_len = line_len - (right_most - left_most);
+
+	char *clean_line = malloc(sizeof(char) * clean_line_len + 1);
+
+	strncpy(clean_line,line,left_most-line);
+	strncpy(clean_line+(left_most-line),right_most,line+line_len-right_most);
+	clean_line[clean_line_len]='\0';
+	return clean_line;
+}
+
+/*
+ * GetDirectionFile
+ *
+ * @brief: 	This function will check if there is a
+ * 		redirection in a given file.
+ * 		If there is, it will return the file pointer
+ * 		in the line given, Also, will assign the length
+ * 		of the files name in the len var given.
+ *
+ * @param line:		char* line, the line to check.
+ *
+ * @param len:		int* len, the len of the file name
+ * 			if found, will be assigned.
+ *
+ * @param direction:	The direction which is wanted to be checked
+ * 			Can be either > or <.
+ *
+ * @return:		If no redirection was found, NULL will be returned
+ * 			o.w. will retrun the pointer to the file to redirect to.
+ *
+ * @Note:		If there was a redirection sign, but no file found
+ * 			the pointer will not neccesarly be NULL, but the len will be 0!!!
+ *
+ * 			It is up to you to make sure and check!
+ *
+ */
+char* GetDirectionFile(char* line, int* len, char direction)
+{
+	if (direction != '<' && direction != '>')
+		return NULL;
+
+	if (line == NULL)
+		return NULL;
+
+	/* Input file must be from the right most */
+	char *last_occur = strrchr(line,direction);
+	char *l = last_occur;
+
+	/* No redirection found */
+	if (last_occur == NULL)
+		return NULL;
+
+	l++;
+	/* Find the begining of the input file */
+	while (*l == ' ')
+		l++;
+
+	if (*l == '\0')
+		return NULL;
+
+	/* Find the end of the input file */
+	char *r = l;
+	while ( *r && *r != ' ' && *r != '>' && *r != '<' && *r != '\n')
+		r++;
+
+	/* Extract the file */
+
+	*len = r-l;
+	return l;
+}
