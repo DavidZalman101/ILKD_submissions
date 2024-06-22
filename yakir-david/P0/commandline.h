@@ -26,9 +26,13 @@ void CmdfreePieces(CmdPtr);
 CmdPtr Cmdalloc(char*);
 int CmdWhatCmd(CmdPtr);
 void CmdChangeDir(CmdPtr);
-void CmdExec(CmdPtr);
-void CmdRunChild(CmdPtr);
+int CmdExec(CmdPtr);
+int CmdRunChild(CmdPtr);
 void* CmdFindInPath(CmdPtr);
+int CmdRunPIPED(CmdPtr);
+void RunChildRun(CmdPtr);
+void foo(CmdPtr);
+int handleCMD(CmdPtr cptr);
 
 #define CMD_ERROR -1
 #define CMD_NONE 0

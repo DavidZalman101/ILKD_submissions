@@ -565,3 +565,29 @@ char* GetDirectionFile(char* line, int* len, char direction)
 	*len = r-l;
 	return l;
 }
+
+char **getPIPEDlines(char *line)
+{
+        if (line == NULL)
+                return NULL;
+        char *thresh_hold = strchr(line,'|');
+        if (thresh_hold == NULL)
+                return NULL;
+        char **tokens = malloc(sizeof(char*) * 3);
+        tokens[0] = strndup(line,thresh_hold-line);
+        tokens[1] = strndup(thresh_hold+1,line+strlen(line)-thresh_hold);
+	tokens[2] = NULL;
+        return tokens;
+}
+
+char *getCleanExecline(char *line)
+{
+	if (line == 0)
+		return NULL;
+
+	char *exec_ptr = strstr(line,"exec");
+	if (exec_ptr == NULL)
+		return NULL;
+	char *clean_line = strdup(exec_ptr+4);
+	return clean_line;
+}

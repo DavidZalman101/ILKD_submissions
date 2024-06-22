@@ -49,5 +49,7 @@ char* subHomeDir_str(char*);
 void subHomeDir_args(char**);
 char* GetDirectionFile(char*,int*,char);
 char* CleanCmdFromDirectionFiles(char*);
+char **getPIPEDlines(char*);
+char *getCleanExecline(char*);
 
 // END
