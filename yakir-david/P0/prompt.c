@@ -40,7 +40,7 @@ PromptPtr updatePromptCWD(PromptPtr p)
  *
  * @param p: 		PromptPtr (prompt*) of the prompt
  *
- * @return:		On failure will print nothing. TODO: this is ok?
+ * @return:		On failure will print nothing.
  */
 void printPrompt(PromptPtr p)
 {

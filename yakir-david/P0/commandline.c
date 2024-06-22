@@ -37,21 +37,19 @@ CmdPtr Cmdalloc(char *line)
 	cptr->in_fd=STDIN;
 	cptr->out_fd=STDOUT;
 
-	// line
-	// Get redirection if exists
+	// Get redirection
 	int file_len = 0;
 	char *file = GetDirectionFile(line,&file_len,'<');
 	if (file != NULL && file_len == 0)
 	{
-		puts(ANSI_COLOR_RED"Error: Redirection with no file to redirect to!"ANSI_COLOR_RESET);
+		PERROR("Error: Redirection with no file to redirect to!");
 		goto ERROR_FREE_AND_EXIT_1;
 	}
-	//TODO: check strndup
+
 	if (file != NULL)
-		cptr->in_file = strndup(file,file_len);
+		if((cptr->in_file = strndup(file,file_len)) == NULL)
+			goto ERROR_FREE_AND_EXIT_1;
 
-
-	// Output aka >
 	file = GetDirectionFile(line,&file_len,'>');
 	if (file != NULL && file_len == 0)
 	{
@@ -232,14 +230,12 @@ static int CmdRedirectInput(CmdPtr cptr)
 	return 0;
 
 	ERROR_CLOSE_AND_EXIT_0:
-		printf(ANSI_COLOR_RED "Error: Could not redirect input file %s\n"\
-				ANSI_COLOR_RESET, cptr->in_file);
+		PERROR_S("Error: Could not redirect input file %s\n",cptr->in_file);
 		return -1;
 
 	ERROR_CLOSE_AND_EXIT_1:
 		close(cptr->in_fd);
-		printf(ANSI_COLOR_RED "Error: %s\n"\
-				ANSI_COLOR_RESET, strerror(errno));
+		PERROR_S("Error: %s\n",strerror(errno));
 		return -1;
 }
 
@@ -259,8 +255,7 @@ static void CmdSetDefaultInOut(CmdPtr cptr)
 		return;
 
 	if (dup2(cptr->stdin_fd,STDIN_FILENO) == -1 || dup2(cptr->stdout_fd,STDOUT_FILENO) == -1)
-		printf(ANSI_COLOR_RED "Error: %s\n"\
-				ANSI_COLOR_RESET, strerror(errno));
+		PERROR_S("Error: %s\n",strerror(errno));
 }
 
 /*
@@ -317,16 +312,28 @@ void CmdChangeDir(CmdPtr cptr)
 		return;
 	if (cptr->pieces_num != 2)
 	{
-		puts(ANSI_COLOR_RED "Error: one argument must be provided." ANSI_COLOR_RESET);
-		puts(ANSI_COLOR_RED "Usage: cd <directory>" ANSI_COLOR_RESET);
+		PERROR("Error: one argument must be provided.");
+		PERROR("usage: cd <directory>");
 		return;
 	}
 	if(chdir(cptr->pieces[1]) == -1)
-		printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+		PERROR_S("Error: %s\n",strerror(errno));
 	return;
 }
 
-// TODO: complete descrp
+/*
+ * CmdFindInPath
+ *
+ * @brief: 	This function will change the commands path
+ * 		iff it is found in the PATH tree.
+ *
+ * @param CmdPtr:	The command to run
+ *
+ * @return:		The updated cptr (same as the one given).
+ *
+ * @note:		On error NULL, o.w. cptr.
+ *
+ */
 void *CmdFindInPath(CmdPtr cptr)
 {
 	if (cptr == NULL)
@@ -357,13 +364,15 @@ int CmdExec(CmdPtr cptr)
 {
 	if (cptr == NULL || cptr->pieces == NULL || cptr->pieces_num == 0)
 		return EXIT_SUCCESS;
+
 	if (strcmp(cptr->pieces[0],"exec") != 0)
 		return EXIT_SUCCESS;
+
 	if (cptr->pieces_num <= 1)
 	{
-		puts(ANSI_COLOR_RED "Error: At least one argument must be provided." ANSI_COLOR_RESET);
-		puts(ANSI_COLOR_RED "Usage: exec [arg0] [arg1] ... [argn]" ANSI_COLOR_RESET);
-		return EXIT_SUCCESS;
+		PERROR("Error: At least one argument must be provided.");
+		PERROR("Usage: exec [arg0] [arg1] ... [argn]");
+		return EXIT_SUCCESS; // Do not exit the shell
 	}
 
 	char **args = copysArg(cptr->pieces,1,cptr->pieces_num-1);
@@ -383,6 +392,17 @@ int CmdExec(CmdPtr cptr)
 	return EXIT_SUCCESS;
 }
 
+/*
+ * CmdRunChild
+ *
+ * @brief: 	This Runs a command like
+ * 		if needed it will send it to the piped procedure
+ *
+ * @param CmdPtr cptr:	The command to run.
+ *
+ * @return:		EXIT_SUCCESS or EXIT_FAILURE.
+ *
+ */
 int CmdRunChild(CmdPtr cptr)
 {
 	if (cptr == NULL || cptr->pieces == NULL || cptr->pieces_num == 0)
@@ -410,6 +430,20 @@ int CmdRunChild(CmdPtr cptr)
 	return WEXITSTATUS(status);
 }
 
+/*
+ * RunChildRun
+ *
+ * @brief: 	This function actually send a
+ * 		command to run (as deep as it goes...)
+ *
+ * @param CmdPtr cptr:	the command to run
+ *
+ * @return:		EXIT_SUCCESS or EXIT_FAILURE.
+ *
+ * note:		The EXIT_SUCCESS will be returned
+ * 			by the bin runnig, EXIT_FAILURE could
+ * 			come from either here, or the bin called.
+ */
 void RunChildRun(CmdPtr cptr)
 {
 	if (cptr == NULL)
@@ -421,7 +455,7 @@ void RunChildRun(CmdPtr cptr)
 	execv(cptr->pieces[0],cptr->pieces); /* Execute as is */
 
 	if (CmdFindInPath(cptr) == NULL)
-		printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+		PERROR_S("Error: %s\n", strerror(errno));
 	else
 		execv(cptr->pieces[0],cptr->pieces); /* Execture from PATH */
 
@@ -430,6 +464,23 @@ void RunChildRun(CmdPtr cptr)
 		exit(EXIT_FAILURE);
 }
 
+/*
+ * CmdRunPIPED
+ *
+ * @brief: 	This function runs piped commands
+ * 		By forking and piping.
+ *
+ * 		child0 will run the left side of the pipe
+ * 		child1 will run the right sice of the pipe
+ * 		Parent will wait for both and return the res.
+ *
+ * @param CmdPtr cptr:	the command to run
+ *
+ * @return:		EXIT_SUCCESS or EXIT_FAILURE.
+ *
+ * note: This function is long and ugly O_o
+ * 	Since no one else will use it, we will not change it...
+ */
 int CmdRunPIPED(CmdPtr cptr)
 {
 	if (cptr == NULL || strchr(cptr->line, '|') == NULL)
@@ -495,38 +546,23 @@ int CmdRunPIPED(CmdPtr cptr)
         ERROR_EXIT_0:
                 Cmdfree(cptr_0);
                 Cmdfree(cptr_1);
-                printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+		PERROR_S("Error: %s\n", strerror(errno));
                 return EXIT_FAILURE;
 
         ERROR_EXIT_1:
-                printf(ANSI_COLOR_RED "Error: %s\n" ANSI_COLOR_RESET, strerror(errno));
+		PERROR_S("Error: %s\n", strerror(errno));
                 waitpid(cpid0, &status0, 0);
                 Cmdfree(cptr_0);
                 Cmdfree(cptr_1);
                 return EXIT_FAILURE;
 }
-void foo(CmdPtr cptr)
-{
-	if (cptr == NULL)
-		return;
-	printf("cptr->line = [%s]\n", cptr->line);
-	char**p = cptr->pieces;
-	puts("cptr->pieces = ");
-	while(*p)
-	{
-		printf("[%s]",*p);
-		p++;
-	}
-	puts("");
-	printf("cptr->in_file = [%s]\n", cptr->in_file);
-	printf("cptr->out_file = [%s]\n", cptr->out_file);
-}
+
 /*
  * handleCMD
  *
  * @brief: 	This function handles the cmd line given by the user.
  * 		Is the user just hit ENTER, do nothing
- * 		Instead of just printing "Unrecognized command" 
+ * 		Instead of just printing "Unrecognized command"
  * 		include the name of the program in the error message.
  * 		e.g. cat shell.c -> "Unrecognized command: cat".
  *
@@ -549,7 +585,6 @@ int handleCMD(CmdPtr cptr)
 			break;
 
 		case CMD_ERROR:
-			printf("error\n");
 			ret=EXIT_FAILURE;
 			break;
 
@@ -573,7 +608,7 @@ int handleCMD(CmdPtr cptr)
 			if (CmdFindInPath(cptr) != NULL)
 				CmdRunChild(cptr);
 			else
-				printf(ANSI_COLOR_RED "Unrecognized command: %s\n" ANSI_COLOR_RESET, og_cmd);
+				PERROR_S("Unrecognized command: %s\n",og_cmd);
 			break;
 		default:
 			break;

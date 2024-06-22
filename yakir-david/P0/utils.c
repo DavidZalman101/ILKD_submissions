@@ -1,10 +1,9 @@
 //*********************************************
-//	  	    UTILITIES 
+//	  	    UTILITIES
 //*********************************************
 
+// INCLUDES
 #include "utils.h"
-
-
 
 /*
  * getArgsSize
@@ -108,7 +107,6 @@ int getPATHNumDirs()
 	}
 	n++;
 	return n;
-
 }
 
 /*
@@ -323,17 +321,12 @@ char* subHomeDir_str(char *s)
         int new_s_len = 0, HOME_len = strlen(HOME), s_len = strlen(s), usr_name_len = 0;
 
         if (s_len == 1)
-	{
-                /* Empty username string ~ */
-                //new_s = strdup(HOME);
 		STRDUP(new_s,HOME);
-	}
 
         else if (s_len > 1 && s[1] == '/')
         {
                 /* Empty username string ~/more/tokens/here */
                 new_s_len = HOME_len + s_len - 1;
-                //new_s = malloc(sizeof(char) * (new_s_len+1));
 		MALLOC(new_s,sizeof(char) * (new_s_len+1));
                 strcpy(new_s,HOME);
                 strcpy(new_s + HOME_len, s+1);
@@ -373,7 +366,7 @@ char* subHomeDir_str(char *s)
 /*
  * subHomeDir_args
  *
- * @brief:		This function performs subHomeDir_str on 
+ * @brief:		This function performs subHomeDir_str on
  * 			each str in args
  *
  * @param args:		A char** args

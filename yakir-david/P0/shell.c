@@ -1,8 +1,6 @@
 #include "utils.h"
 #include "prompt.h"
 #include "commandline.h"
-#include <stdio.h>
-#include <string.h>
 
 int main()
 {

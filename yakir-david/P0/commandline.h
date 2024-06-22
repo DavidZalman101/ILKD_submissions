@@ -1,9 +1,13 @@
 //*********************************************
-//************CommandLine Object***************
+//                commandline.h
 //*********************************************
 
 // Includes
 #include "utils.h"
+
+//*********************************************
+//*****************Cmd Object******************
+//*********************************************
 
 typedef struct commandline {
 	char *line;
@@ -29,10 +33,9 @@ void CmdChangeDir(CmdPtr);
 int CmdExec(CmdPtr);
 int CmdRunChild(CmdPtr);
 void* CmdFindInPath(CmdPtr);
+int handleCMD(CmdPtr cptr);
 int CmdRunPIPED(CmdPtr);
 void RunChildRun(CmdPtr);
-void foo(CmdPtr);
-int handleCMD(CmdPtr cptr);
 
 #define CMD_ERROR -1
 #define CMD_NONE 0
@@ -41,14 +44,4 @@ int handleCMD(CmdPtr cptr);
 #define CMD_EXEC 3
 #define CMD_UNRECOGNIZED 4
 #define CMD_RUN_CHILD 5
-
-// ANSI color
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
-
 // END
