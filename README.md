@@ -1,8 +1,30 @@
-# ILKD_submissions
+# Unix Style Shell From Scratch
 
-Generate patchsets from this repository to submit as homework for Intro to Linux Kernel Development.
-
-Per the
-[procedures](https://spring2024-iit.kdlp.underground.software/procedures.md)
-each student should create a directory named after their username
-and place all assignment related file and subdirectories within.
+## Build and run compiler
+**Make use of the Makefile for an easy build**
+```sh
+Make
+```
+**Start up the shell**
+```c
+./shell
+```
+**output**
+```sh
+*********************************************************************************
+* Welcome to our ****************************************************************
+*                              ____  _          _ _                             *
+*                             / ___|| |__   ___| | |                            *
+*                             \___ \| '_ \ / _ \ | |                            *
+*                              ___) | | | |  __/ | |                            *
+*                             |____/|_| |_|\___|_|_|                            *
+* By: david *********************************************************************
+*********************************************************************************
+/your_directory$
+```
+**Run your favorite shell commands - Beeping!**
+```sh
+echo -e \a
+```
+**output**
+Did it beep?
